@@ -5,12 +5,19 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
+	"time"
 
 	discogs "github.com/irlndts/go-discogs"
 	"github.com/robdimsdale/wl"
 	"github.com/robdimsdale/wl/logger"
 	"github.com/robdimsdale/wl/oauth"
 )
+
+type song struct {
+	artist string
+	title  string
+}
 
 func main() {
 	accessToken := flag.String("access-token", os.Getenv("WL_ACCESS_TOKEN"), "access token of your WunderList Account.")
@@ -27,6 +34,7 @@ func main() {
 		wl.APIURL,
 		logger.NewLogger(logger.INFO),
 	)
+	c := discogs.NewClient("MolinasTest/0.1", *discogsToken)
 
 	// Ignore error
 	lists, err := client.Lists()
@@ -46,20 +54,28 @@ func main() {
 	}
 	sort.Strings(titles)
 	for _, title := range titles {
-		fmt.Println(title)
-	}
-
-	c := discogs.NewClient()
-	c.UserAgent("MolinasTest/0.1 +http://discogs.vicananza.com")
-	c.Token(*discogsToken)
-	searchRequest := c.Search
-	request := &discogs.SearchRequest{Artist: "reggaenauts", Release_title: "river rock", Page: 0, Per_page: 1}
-	s, _, err := searchRequest.Search(request)
-	if err != nil {
-		fmt.Println(err)
-	}
-	for i, n := range s.Results {
-		fmt.Println(i, n.Title)
+		//if title == "exium - subtoned" {
+		if strings.Contains(title, " - ") {
+			result := strings.Split(title, " - ")
+			t := &song{
+				artist: result[0],
+				title:  result[1],
+			}
+			time.Sleep(2 * time.Second)
+			request := &discogs.SearchRequest{Q: title, Artist: t.artist, Page: 0, Per_page: 1}
+			s, _, err := c.Search.Search(request)
+			if err != nil {
+				fmt.Println(err)
+			}
+			for _, n := range s.Results {
+				fmt.Println("-------")
+				fmt.Printf("Canción: %s\nDisco: %s\n", title, n.Title)
+				for _, style := range n.Style {
+					fmt.Printf("Estilo: %s\n", style)
+				}
+				fmt.Println("-------")
+			}
+		}
 	}
 }
 
